@@ -54,4 +54,4 @@ class NMTModel(nn.Module):
             # Not yet supported on multi-gpu
             dec_state = None
             attns = None
-        return decoder_outputs, attns, dec_state
+        return enc_state, decoder_outputs, attns, dec_state

@@ -106,7 +106,7 @@ class LossComputeBase(nn.Module):
 
         return batch_stats
 
-    def sharded_compute_loss(self, batch, output, attns,
+    def sharded_compute_loss(self, batch, enc_outputs, output, attns,
                              cur_trunc, trunc_size, shard_size,
                              normalization):
         """Compute the forward loss and backpropagate.  Computation is done
@@ -141,7 +141,9 @@ class LossComputeBase(nn.Module):
         shard_state = self._make_shard_state(batch, output, range_, attns)
         for shard in shards(shard_state, shard_size):
             loss, stats = self._compute_loss(batch, **shard)
-            loss.div(float(normalization)).backward()
+            discriminator_loss = discriminator._compute_loss_generator()
+            total_loss = loss.div(float(normalization)) + discriminator_loss
+            total_loss.backward()
             batch_stats.update(stats)
 
         return batch_stats
