@@ -126,6 +126,9 @@ def model_opts(parser):
     group.add_argument('-lambda_coverage', type=float, default=1,
                        help='Lambda value for coverage.')
 
+    # Discriminator and loss options.
+    group.add_argument('-discriminator', action="store_true",
+                       help='Train with discriminator')
 
 def preprocess_opts(parser):
     """ Pre-procesing options """

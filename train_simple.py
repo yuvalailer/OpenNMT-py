@@ -78,16 +78,9 @@ def main(opt):
         checkpoint = torch.load(opt.train_from,
                                 map_location=lambda storage, loc: storage)
         model_opt = checkpoint['opt']
-
-        discriminator_checkpoint = f'{opt.train_from}.descriminator'
-        logger.info('Loading checkpoint for %s' % discriminator_checkpoint)
-        discriminator_checkpoint = torch.load(discriminator_checkpoint,
-                                map_location=lambda storage, loc: storage)
-        discriminator_opt = discriminator_checkpoint['opt']
     else:
-        checkpoint, discriminator_checkpoint = None, None
+        checkpoint = None
         model_opt = opt
-        discriminator_opt = {}
 
     # Peek the fisrt dataset to determine the data_type.
     # (All datasets have the same data_type).
@@ -109,7 +102,6 @@ def main(opt):
 
     # Build model.
     model = build_model(model_opt, opt, fields, checkpoint)
-    # descriminator = build_model(discriminator_opt, opt, fields, checkpoint)
     n_params, enc, dec = _tally_parameters(model)
     logger.info('encoder: %d' % enc)
     logger.info('decoder: %d' % dec)

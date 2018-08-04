@@ -20,6 +20,8 @@ from onmt.decoders.decoder import InputFeedRNNDecoder, StdRNNDecoder
 from onmt.decoders.transformer import TransformerDecoder
 from onmt.decoders.cnn_decoder import CNNDecoder
 
+from onmt.summarize.siamese import DummyDiscriminator, SiameseDiscriminator
+
 from onmt.modules import Embeddings, CopyGenerator
 from onmt.utils.misc import use_gpu
 from onmt.utils.logging import logger
@@ -207,10 +209,18 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None):
         generator = CopyGenerator(model_opt.rnn_size,
                                   fields["tgt"].vocab)
 
+    # Build discriminator
+    if model_opt.discriminator:
+        discriminator = SiameseDiscriminator(model_opt.rnn_size, model_opt.word_vec_size)
+    else:
+        discriminator = DummyDiscriminator()
+
     # Load the model states from checkpoint or initialize them.
     if checkpoint is not None:
         model.load_state_dict(checkpoint['model'])
         generator.load_state_dict(checkpoint['generator'])
+        discriminator.load_state_dict(checkpoint['discriminator'])
+
     else:
         if model_opt.param_init != 0.0:
             for p in model.parameters():
@@ -234,8 +244,8 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None):
 
     # Add generator to model (this registers it as parameter of model).
     model.generator = generator
+    model.discriminator = discriminator
     model.to(device)
-
     return model
 
 
