@@ -17,7 +17,7 @@ import onmt.utils
 from onmt.utils.logging import logger
 
 
-def build_trainer(opt, model, fields, optim, data_type, model_saver=None):
+def build_trainer(opt, model, fields, optim_G, optim_D, data_type, model_saver=None):
     """
     Simplify `Trainer` creation based on user `opt`s*
 
@@ -25,7 +25,7 @@ def build_trainer(opt, model, fields, optim, data_type, model_saver=None):
         opt (:obj:`Namespace`): user options (usually from argument parsing)
         model (:obj:`onmt.models.NMTModel`): the model to train
         fields (dict): dict of fields
-        optim (:obj:`onmt.utils.Optimizer`): optimizer used during training
+        optim_G (:obj:`onmt.utils.Optimizer`): optimizer used during training
         data_type (str): string describing the type of data
             e.g. "text", "img", "audio"
         model_saver(:obj:`onmt.models.ModelSaverBase`): the utility object
@@ -45,7 +45,7 @@ def build_trainer(opt, model, fields, optim, data_type, model_saver=None):
     gpu_verbose_level = opt.gpu_verbose_level
 
     report_manager = onmt.utils.build_report_manager(opt)
-    trainer = onmt.Trainer(model, train_loss, valid_loss, optim, trunc_size,
+    trainer = onmt.Trainer(model, train_loss, valid_loss, optim_G, optim_D, trunc_size,
                            shard_size, data_type, norm_method,
                            grad_accum_count, n_gpu, gpu_rank,
                            gpu_verbose_level, report_manager,
@@ -78,7 +78,7 @@ class Trainer(object):
                 Thus nothing will be saved if this parameter is None
     """
 
-    def __init__(self, model, train_loss, valid_loss, optim,
+    def __init__(self, model, train_loss, valid_loss, optim_G, optim_D,
                  trunc_size=0, shard_size=32, data_type='text',
                  norm_method="sents", grad_accum_count=1, n_gpu=1, gpu_rank=1,
                  gpu_verbose_level=0, report_manager=None, model_saver=None):
@@ -86,7 +86,8 @@ class Trainer(object):
         self.model = model
         self.train_loss = train_loss
         self.valid_loss = valid_loss
-        self.optim = optim
+        self.optim = optim_G
+        self.optim_D = optim_D
         self.trunc_size = trunc_size
         self.shard_size = shard_size
         self.data_type = data_type

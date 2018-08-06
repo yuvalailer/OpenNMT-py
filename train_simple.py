@@ -109,13 +109,14 @@ def main(opt):
     _check_save_model_path(opt)
 
     # Build optimizer.
-    optim = build_optim(model, opt, checkpoint)
+    optim_G = build_optim(model, opt, checkpoint, lambda x: not x[0].startswith("discriminator"))
+    optim_D = build_optim(model, opt, checkpoint, lambda x: x[0].startswith("discriminator"))
 
     # Build model saver
-    model_saver = build_model_saver(model_opt, opt, model, fields, optim)
+    model_saver = build_model_saver(model_opt, opt, model, fields, optim_G)
 
     trainer = build_trainer(
-        opt, model, fields, optim, data_type, model_saver=model_saver)
+        opt, model, fields, optim_G, optim_D, data_type, model_saver=model_saver)
 
     def train_iter_fct(): return build_dataset_iter(
         lazily_load_dataset("train", opt), fields, opt)

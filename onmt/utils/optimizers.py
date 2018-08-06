@@ -6,7 +6,7 @@ from torch.nn.utils import clip_grad_norm_
 from onmt.utils import use_gpu
 
 
-def build_optim(model, opt, checkpoint):
+def build_optim(model, opt, checkpoint, f):
     """ Build optimizer """
     saved_optimizer_state_dict = None
 
@@ -31,6 +31,7 @@ def build_optim(model, opt, checkpoint):
             warmup_steps=opt.warmup_steps,
             model_size=opt.rnn_size)
 
+
     # Stage 1:
     # Essentially optim.set_parameters (re-)creates and optimizer using
     # model.paramters() as parameters that will be stored in the
@@ -38,7 +39,9 @@ def build_optim(model, opt, checkpoint):
     # Importantly, this method does not yet load the optimizer state, as
     # essentially it builds a new optimizer with empty optimizer state and
     # parameters from the model.
-    optim.set_parameters(model.named_parameters())
+
+    # optim.set_parameters(model.named_parameters())
+    optim.set_parameters(filter(f, model.named_parameters()))
 
     if opt.train_from:
         # Stage 2: In this stage, which is only performed when loading an
