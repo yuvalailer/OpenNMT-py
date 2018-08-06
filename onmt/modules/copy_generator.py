@@ -1,11 +1,11 @@
 """ Generator module """
-import torch.nn as nn
 import torch
 import torch.cuda
+import torch.nn as nn
 
 import onmt.inputters as inputters
-from onmt.utils.misc import aeq
 from onmt.utils import loss
+from onmt.utils.misc import aeq
 
 
 class CopyGenerator(nn.Module):
@@ -148,11 +148,11 @@ class CopyGeneratorLossCompute(loss.LossComputeBase):
     Copy Generator Loss Computation.
     """
 
-    def __init__(self, generator, tgt_vocab,
+    def __init__(self, generator, discriminator, tgt_vocab,
                  force_copy, normalize_by_length,
                  eps=1e-20):
         super(CopyGeneratorLossCompute, self).__init__(
-            generator, tgt_vocab)
+            generator, tgt_vocab, discriminator)
 
         # We lazily load datasets when there are more than one, so postpone
         # the setting of cur_dataset.
@@ -162,18 +162,26 @@ class CopyGeneratorLossCompute(loss.LossComputeBase):
         self.criterion = CopyGeneratorCriterion(len(tgt_vocab), force_copy,
                                                 self.padding_idx)
 
-    def _make_shard_state(self, batch, output, range_, attns):
+    def _make_shard_state(self, batch, output, range_, attns, enc_outputs=None):
         """ See base class for args description. """
         if getattr(batch, "alignment", None) is None:
             raise AssertionError("using -copy_attn you need to pass in "
                                  "-dynamic_dict during preprocess stage.")
-
-        return {
-            "output": output,
-            "target": batch.tgt[range_[0] + 1: range_[1]],
-            "copy_attn": attns.get("copy"),
-            "align": batch.alignment[range_[0] + 1: range_[1]]
-        }
+        if enc_outputs is None:
+            return {
+                "output": output,
+                "target": batch.tgt[range_[0] + 1: range_[1]],
+                "copy_attn": attns.get("copy"),
+                "align": batch.alignment[range_[0] + 1: range_[1]]
+            }
+        else:
+            return {
+                "output": output,
+                "enc_outputs": enc_outputs,
+                "target": batch.tgt[range_[0] + 1: range_[1]],
+                "copy_attn": attns.get("copy"),
+                "align": batch.alignment[range_[0] + 1: range_[1]]
+            }
 
     def _compute_loss(self, batch, output, target, copy_attn, align):
         """

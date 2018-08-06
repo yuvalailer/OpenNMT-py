@@ -5,6 +5,7 @@ This includes: LossComputeBase and the standard NMTLossCompute, and
                sharded loss compute stuff.
 """
 from __future__ import division
+
 import torch
 import torch.nn as nn
 
@@ -22,7 +23,7 @@ def build_loss_compute(model, tgt_vocab, opt, train=True):
 
     if opt.copy_attn:
         compute = onmt.modules.CopyGeneratorLossCompute(
-            model.generator, tgt_vocab, opt.copy_attn_force,
+            model.generator, model.discriminator, tgt_vocab, opt.copy_attn_force,
             opt.copy_loss_by_seqlength)
     else:
         compute = NMTLossCompute(
@@ -53,13 +54,14 @@ class LossComputeBase(nn.Module):
         normalzation (str): normalize by "sents" or "tokens"
     """
 
-    def __init__(self, generator, tgt_vocab):
+    def __init__(self, generator, tgt_vocab, discriminator):
         super(LossComputeBase, self).__init__()
         self.generator = generator
         self.tgt_vocab = tgt_vocab
         self.padding_idx = tgt_vocab.stoi[inputters.PAD_WORD]
+        self.discriminator = discriminator
 
-    def _make_shard_state(self, batch, output, range_, attns=None):
+    def _make_shard_state(self, batch, output, range_, attns=None, enc_outputs=None):
         """
         Make shard state dictionary for shards() to return iterable
         shards for efficient loss computation. Subclass must define
@@ -138,10 +140,14 @@ class LossComputeBase(nn.Module):
         """
         batch_stats = onmt.utils.Statistics()
         range_ = (cur_trunc, cur_trunc + trunc_size)
-        shard_state = self._make_shard_state(batch, output, range_, attns)
+        shard_state = self._make_shard_state(batch, output, range_, attns, enc_outputs)
         for shard in shards(shard_state, shard_size):
+            discriminator_loss = self.discriminator._compute_loss_generator(shard.get("enc_outputs"), shard.get(
+                "output"))  # TODO: add stats output to the ompute_loss_generator func
+            # pop enc_outputs from shard
+            del shard["enc_outputs"]
             loss, stats = self._compute_loss(batch, **shard)
-            discriminator_loss = discriminator._compute_loss_generator()
+
             total_loss = loss.div(float(normalization)) + discriminator_loss
             total_loss.backward()
             batch_stats.update(stats)
@@ -296,4 +302,4 @@ def shards(state, shard_size, eval_only=False):
                 variables.extend(zip(torch.split(state[k], shard_size),
                                      [v_chunk.grad for v_chunk in v_split]))
         inputs, grads = zip(*variables)
-        torch.autograd.backward(inputs, grads)
+        # torch.autograd.backward(inputs, grads) # backprop was already done in compute-loss function

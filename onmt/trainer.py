@@ -301,7 +301,7 @@ class Trainer(object):
                 grads, float(1))
 
         # 4. Update the parameters and statistics.
-        self.optim.step()
+        self.optim.step() # TODO:
         # return outputs
 
     def _start_report_manager(self, start_time=None):
