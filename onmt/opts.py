@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import argparse
+
 from onmt.models.sru import CheckSRU
 
 
@@ -127,8 +128,11 @@ def model_opts(parser):
                        help='Lambda value for coverage.')
 
     # Discriminator and loss options.
+    group = parser.add_argument_group('Loss- Discriminator')
     group.add_argument('-discriminator', action="store_true",
                        help='Train with discriminator')
+    group.add_argument('-loss-ratio', type=float, default=1,
+                       help='base loss will be multiplied by this value')
 
 def preprocess_opts(parser):
     """ Pre-procesing options """
