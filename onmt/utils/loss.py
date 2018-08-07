@@ -154,6 +154,54 @@ class LossComputeBase(nn.Module):
 
         return batch_stats
 
+    def sharded_compute_loss_discriminator(self, batch, enc_outputs, output, attns,
+                             cur_trunc, trunc_size, shard_size,
+                             normalization):
+        """Compute the forward loss and backpropagate.  Computation is done
+        with shards and optionally truncation for memory efficiency.
+
+        Also supports truncated BPTT for long sequences by taking a
+        range in the decoder output sequence to back propagate in.
+        Range is from `(cur_trunc, cur_trunc + trunc_size)`.
+
+        Note sharding is an exact efficiency trick to relieve memory
+        required for the generation buffers. Truncation is an
+        approximate efficiency trick to relieve the memory required
+        in the RNN buffers.
+
+        Args:
+          batch (batch) : batch of labeled examples
+          output (:obj:`FloatTensor`) :
+              output of decoder model `[tgt_len x batch x hidden]`
+          attns (dict) : dictionary of attention distributions
+              `[tgt_len x batch x src_len]`
+          cur_trunc (int) : starting position of truncation window
+          trunc_size (int) : length of truncation window
+          shard_size (int) : maximum number of examples in a shard
+          normalization (int) : Loss is divided by this number
+
+        Returns:
+            :obj:`onmt.utils.Statistics`: validation loss statistics
+
+        """
+        batch_stats = onmt.utils.Statistics()
+        range_ = (cur_trunc, cur_trunc + trunc_size)
+        shard_state = self._make_shard_state(batch, output, range_, attns, enc_outputs)
+        for shard in shards(shard_state, shard_size):
+            discriminator_loss = self.discriminator._compute_loss_discriminator(shard.get("enc_outputs"), shard.get(
+               "output"), shard.get(
+                "target"))  # TODO: add stats output to the compute_loss_generator func
+
+            # pop enc_outputs from shard
+            del shard["enc_outputs"]
+            loss, stats = self._compute_loss(batch, **shard)
+
+            total_loss = self.loss_ratio * loss.div(float(normalization)) + discriminator_loss
+            total_loss.backward()
+            batch_stats.update(stats)
+
+        return batch_stats
+
     def _stats(self, loss, scores, target):
         """
         Args:

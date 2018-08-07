@@ -282,21 +282,22 @@ class Trainer(object):
                     enc_outputs, outputs, attns, dec_state = \
                         self.model(src, tgt, src_lengths, dec_state)
 
+                    enc_tgt = self.model.encoder()
                 # 3. Compute loss for G in shards for memory efficiency.
-                batch_stats = self.train_loss.sharded_compute_loss(
+                batch_stats_G = self.train_loss.sharded_compute_loss(
                     batch, enc_outputs, outputs, attns, j,
                     trunc_size, self.shard_size, normalization)
-                total_stats.update(batch_stats)
-                report_stats.update(batch_stats)
+                total_stats.update(batch_stats_G)
+                report_stats.update(batch_stats_G)
 
                 # 4. Compute loss for D in shards for memory efficiency.
-                batch_stats = self.train_loss.sharded_compute_loss(
+                batch_stats_D = self.train_loss.sharded_compute_loss_discriminator(
                     batch, enc_outputs, outputs, attns, j,
                     trunc_size, self.shard_size, normalization)
 
                 # TODO: update stats for D
-                # total_stats.update(batch_stats)
-                # eport_stats.update(batch_stats)
+                # total_stats.update(batch_stats_D)
+                # eport_stats.update(batch_stats_D)
 
             # If truncated, don't backprop fully.
                 if dec_state is not None:

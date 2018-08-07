@@ -74,7 +74,18 @@ class SiameseDiscriminator(nn.Module):
 
     def _compute_loss_generator(self, enc_output, decoder_output):
         y_hat = self.forward(decoder_output, enc_output)
-        # loss = F.binary_cross_entropy_with_logits(y_hat, 1)
         loss = F.binary_cross_entropy_with_logits(y_hat,
                                                   torch.ones(y_hat.size(), requires_grad=False).to(device=y_hat.device))
         return loss
+
+    def _compute_loss_discriminator(self, enc_output, decoder_output, target):
+
+        y_hat_real = self.forward(decoder_output, enc_output)
+        loss_real = F.binary_cross_entropy_with_logits(y_hat_real,
+                                                  torch.ones(y_hat_real.size(), requires_grad=False).to(device=y_hat_real.device))
+        # TODO: encoded_target =
+        y_hat_fake = self.forward(decoder_output, enc_output)
+        loss_fake = F.binary_cross_entropy_with_logits(y_hat_fake,
+                                                       torch.zeros(y_hat_fake.size(), requires_grad=False).to(device=y_hat_fake.device))
+
+        return 0.5 * (loss_real + loss_fake)
