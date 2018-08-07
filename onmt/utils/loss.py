@@ -143,7 +143,7 @@ class LossComputeBase(nn.Module):
         shard_state = self._make_shard_state(batch, output, range_, attns, enc_outputs)
         for shard in shards(shard_state, shard_size):
             discriminator_loss = self.discriminator._compute_loss_generator(shard.get("enc_outputs"), shard.get(
-                "output"))  # TODO: add stats output to the ompute_loss_generator func
+                "output"))  # TODO: add stats output to the compute_loss_generator func
             # pop enc_outputs from shard
             del shard["enc_outputs"]
             loss, stats = self._compute_loss(batch, **shard)

@@ -282,14 +282,23 @@ class Trainer(object):
                     enc_outputs, outputs, attns, dec_state = \
                         self.model(src, tgt, src_lengths, dec_state)
 
-                # 3. Compute loss in shards for memory efficiency.
+                # 3. Compute loss for G in shards for memory efficiency.
                 batch_stats = self.train_loss.sharded_compute_loss(
                     batch, enc_outputs, outputs, attns, j,
                     trunc_size, self.shard_size, normalization)
                 total_stats.update(batch_stats)
                 report_stats.update(batch_stats)
 
-                # If truncated, don't backprop fully.
+                # 4. Compute loss for D in shards for memory efficiency.
+                batch_stats = self.train_loss.sharded_compute_loss(
+                    batch, enc_outputs, outputs, attns, j,
+                    trunc_size, self.shard_size, normalization)
+
+                # TODO: update stats for D
+                # total_stats.update(batch_stats)
+                # eport_stats.update(batch_stats)
+
+            # If truncated, don't backprop fully.
                 if dec_state is not None:
                     dec_state.detach()
 
@@ -302,7 +311,8 @@ class Trainer(object):
                 grads, float(1))
 
         # 4. Update the parameters and statistics.
-        self.optim.step() # TODO:
+        self.optim.step()  # update G
+        self.optim_D.step() # update D
         # return outputs
 
     def _start_report_manager(self, start_time=None):
