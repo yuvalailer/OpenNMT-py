@@ -24,7 +24,7 @@ def build_loss_compute(model, tgt_vocab, opt, train=True):
     if opt.copy_attn:
         compute = onmt.modules.CopyGeneratorLossCompute(
             model.generator, model.discriminator, tgt_vocab, opt.copy_attn_force,
-            opt.copy_loss_by_seqlength)
+            opt.copy_loss_by_seqlength, opt.loss_ratio)
     else:
         compute = NMTLossCompute(
             model.generator, tgt_vocab,
@@ -148,7 +148,7 @@ class LossComputeBase(nn.Module):
             del shard["enc_outputs"]
             loss, stats = self._compute_loss(batch, **shard)
 
-            total_loss = loss.div(float(normalization)) + discriminator_loss
+            total_loss = self.loss_ratio * loss.div(float(normalization)) + discriminator_loss
             total_loss.backward()
             batch_stats.update(stats)
 

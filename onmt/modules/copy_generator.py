@@ -149,7 +149,7 @@ class CopyGeneratorLossCompute(loss.LossComputeBase):
     """
 
     def __init__(self, generator, discriminator, tgt_vocab,
-                 force_copy, normalize_by_length,
+                 force_copy, normalize_by_length, loss_ratio,
                  eps=1e-20):
         super(CopyGeneratorLossCompute, self).__init__(
             generator, tgt_vocab, discriminator)
@@ -159,6 +159,7 @@ class CopyGeneratorLossCompute(loss.LossComputeBase):
         self.cur_dataset = None
         self.force_copy = force_copy
         self.normalize_by_length = normalize_by_length
+        self.loss_ratio = loss_ratio
         self.criterion = CopyGeneratorCriterion(len(tgt_vocab), force_copy,
                                                 self.padding_idx)
 
