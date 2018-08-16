@@ -240,9 +240,9 @@ def train_opts(parser):
                        <save_model>_N.pt where N is the number
                        of steps""")
 
-    group.add_argument('-save_checkpoint_steps', type=int, default=5000,
+    group.add_argument('-save_checkpoint_steps', type=int, default=5,
                        help="""Save a checkpoint every X steps""")
-    group.add_argument('-keep_checkpoint', type=int, default=-1,
+    group.add_argument('-keep_checkpoint', type=int, default=3,
                        help="""Keep X checkpoints (negative: keep all)""")
 
     # GPU

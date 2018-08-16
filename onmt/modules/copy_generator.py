@@ -163,26 +163,23 @@ class CopyGeneratorLossCompute(loss.LossComputeBase):
         self.criterion = CopyGeneratorCriterion(len(tgt_vocab), force_copy,
                                                 self.padding_idx)
 
-    def _make_shard_state(self, batch, output, range_, attns, enc_outputs=None):
+    def _make_shard_state(self, batch, output, range_, attns, enc_outputs=None, enc_tgt=None):
         """ See base class for args description. """
         if getattr(batch, "alignment", None) is None:
             raise AssertionError("using -copy_attn you need to pass in "
                                  "-dynamic_dict during preprocess stage.")
-        if enc_outputs is None:
-            return {
-                "output": output,
-                "target": batch.tgt[range_[0] + 1: range_[1]],
-                "copy_attn": attns.get("copy"),
-                "align": batch.alignment[range_[0] + 1: range_[1]]
-            }
-        else:
-            return {
-                "output": output,
-                "enc_outputs": enc_outputs,
-                "target": batch.tgt[range_[0] + 1: range_[1]],
-                "copy_attn": attns.get("copy"),
-                "align": batch.alignment[range_[0] + 1: range_[1]]
-            }
+        state = {
+            "output": output,
+            "target": batch.tgt[range_[0] + 1: range_[1]],
+            "copy_attn": attns.get("copy"),
+            "align": batch.alignment[range_[0] + 1: range_[1]]
+        }
+        if enc_outputs is not None:
+            state["enc_outputs"] = enc_outputs
+        if enc_tgt is not None:
+            state["enc_tgt"] = enc_tgt
+        return state
+
 
     def _compute_loss(self, batch, output, target, copy_attn, align):
         """

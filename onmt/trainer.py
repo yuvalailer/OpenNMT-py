@@ -13,7 +13,6 @@ from __future__ import division
 
 import onmt.inputters as inputters
 import onmt.utils
-
 from onmt.utils.logging import logger
 
 
@@ -235,7 +234,7 @@ class Trainer(object):
             tgt = inputters.make_features(batch, 'tgt')
 
             # F-prop through the model.
-            outputs, attns, _ = self.model(src, tgt, src_lengths)
+            memory_bank, outputs, attns, _ = self.model(src, tgt, src_lengths)
 
             # Compute loss.
             batch_stats = self.valid_loss.monolithic_compute_loss(
@@ -266,6 +265,7 @@ class Trainer(object):
             src = inputters.make_features(batch, 'src', self.data_type)
             if self.data_type == 'text':
                 _, src_lengths = batch.src
+                _, tgt_lengths = batch.tgt
                 report_stats.n_src_words += src_lengths.sum().item()
             else:
                 src_lengths = None
@@ -282,38 +282,40 @@ class Trainer(object):
                     enc_outputs, outputs, attns, dec_state = \
                         self.model(src, tgt, src_lengths, dec_state)
 
-                    enc_tgt = self.model.encoder()
                 # 3. Compute loss for G in shards for memory efficiency.
                 batch_stats_G = self.train_loss.sharded_compute_loss(
                     batch, enc_outputs, outputs, attns, j,
                     trunc_size, self.shard_size, normalization)
                 total_stats.update(batch_stats_G)
                 report_stats.update(batch_stats_G)
+                self.optim.step()  # update G
 
                 # 4. Compute loss for D in shards for memory efficiency.
-                batch_stats_D = self.train_loss.sharded_compute_loss_discriminator(
+                enc_final, memory_bank = self.model.encoder(tgt, tgt_lengths)
+                self.model.zero_grad()
+                # batch_stats_D =
+                self.train_loss.sharded_compute_loss_discriminator(
                     batch, enc_outputs, outputs, attns, j,
-                    trunc_size, self.shard_size, normalization)
+                    trunc_size, self.shard_size, memory_bank)
 
                 # TODO: update stats for D
                 # total_stats.update(batch_stats_D)
-                # eport_stats.update(batch_stats_D)
+                # report_stats.update(batch_stats_D)
+                self.optim_D.step()  # update D
 
-            # If truncated, don't backprop fully.
+                # If truncated, don't backprop fully.
                 if dec_state is not None:
                     dec_state.detach()
 
-        # 3.bis Multi GPU gradient gather
-        if self.n_gpu > 1:
-            grads = [p.grad.data for p in self.model.parameters()
-                     if p.requires_grad
-                     and p.grad is not None]
-            onmt.utils.distributed.all_reduce_and_rescale_tensors(
-                grads, float(1))
+                    # # 3.bis Multi GPU gradient gather
+                    # if self.n_gpu > 1:
+                    #     grads = [p.grad.data for p in self.model.parameters()
+                    #              if p.requires_grad
+                    #              and p.grad is not None]
+                    #     onmt.utils.distributed.all_reduce_and_rescale_tensors(
+                    #         grads, float(1))
 
         # 4. Update the parameters and statistics.
-        self.optim.step()  # update G
-        self.optim_D.step() # update D
         # return outputs
 
     def _start_report_manager(self, start_time=None):

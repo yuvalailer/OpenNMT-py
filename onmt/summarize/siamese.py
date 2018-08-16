@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import onmt
+
 
 # from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
@@ -84,8 +86,8 @@ class SiameseDiscriminator(nn.Module):
         loss_real = F.binary_cross_entropy_with_logits(y_hat_real,
                                                   torch.ones(y_hat_real.size(), requires_grad=False).to(device=y_hat_real.device))
         # TODO: encoded_target =
-        y_hat_fake = self.forward(decoder_output, enc_output)
+        y_hat_fake = self.forward(target, enc_output)
         loss_fake = F.binary_cross_entropy_with_logits(y_hat_fake,
                                                        torch.zeros(y_hat_fake.size(), requires_grad=False).to(device=y_hat_fake.device))
-
-        return 0.5 * (loss_real + loss_fake)
+        loss = 0.5 * (loss_real + loss_fake)
+        return loss, onmt.utils.Statistics(loss.item(), 1, 1)

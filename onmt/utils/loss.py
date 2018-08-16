@@ -155,8 +155,7 @@ class LossComputeBase(nn.Module):
         return batch_stats
 
     def sharded_compute_loss_discriminator(self, batch, enc_outputs, output, attns,
-                             cur_trunc, trunc_size, shard_size,
-                             normalization):
+                                           cur_trunc, trunc_size, shard_size, enc_tgt):
         """Compute the forward loss and backpropagate.  Computation is done
         with shards and optionally truncation for memory efficiency.
 
@@ -184,23 +183,17 @@ class LossComputeBase(nn.Module):
             :obj:`onmt.utils.Statistics`: validation loss statistics
 
         """
+        keys = ["enc_outputs", "output", "target"]
         batch_stats = onmt.utils.Statistics()
         range_ = (cur_trunc, cur_trunc + trunc_size)
-        shard_state = self._make_shard_state(batch, output, range_, attns, enc_outputs)
+        shard_state = self._make_shard_state(batch, output, range_, attns, enc_outputs, enc_tgt)
         for shard in shards(shard_state, shard_size):
-            discriminator_loss = self.discriminator._compute_loss_discriminator(shard.get("enc_outputs"), shard.get(
-               "output"), shard.get(
-                "target"))  # TODO: add stats output to the compute_loss_generator func
+            values = list(map(lambda k: shard.get(k).detach(), keys))
+            discriminator_loss, stats = self.discriminator._compute_loss_discriminator(*values)
+            discriminator_loss.backward()
+            # batch_stats.update(stats)
 
-            # pop enc_outputs from shard
-            del shard["enc_outputs"]
-            loss, stats = self._compute_loss(batch, **shard)
-
-            total_loss = self.loss_ratio * loss.div(float(normalization)) + discriminator_loss
-            total_loss.backward()
-            batch_stats.update(stats)
-
-        return batch_stats
+        return  # batch_stats
 
     def _stats(self, loss, scores, target):
         """
