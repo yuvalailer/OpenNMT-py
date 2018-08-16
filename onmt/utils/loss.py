@@ -183,7 +183,7 @@ class LossComputeBase(nn.Module):
             :obj:`onmt.utils.Statistics`: validation loss statistics
 
         """
-        keys = ["enc_outputs", "output", "target"]
+        keys = ["enc_outputs", "output", "enc_tgt"]
         batch_stats = onmt.utils.Statistics()
         range_ = (cur_trunc, cur_trunc + trunc_size)
         shard_state = self._make_shard_state(batch, output, range_, attns, enc_outputs, enc_tgt)
@@ -192,7 +192,6 @@ class LossComputeBase(nn.Module):
             discriminator_loss, stats = self.discriminator._compute_loss_discriminator(*values)
             discriminator_loss.backward()
             # batch_stats.update(stats)
-
         return  # batch_stats
 
     def _stats(self, loss, scores, target):

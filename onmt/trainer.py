@@ -11,6 +11,8 @@
 
 from __future__ import division
 
+import torch
+
 import onmt.inputters as inputters
 import onmt.utils
 from onmt.utils.logging import logger
@@ -265,7 +267,6 @@ class Trainer(object):
             src = inputters.make_features(batch, 'src', self.data_type)
             if self.data_type == 'text':
                 _, src_lengths = batch.src
-                _, tgt_lengths = batch.tgt
                 report_stats.n_src_words += src_lengths.sum().item()
             else:
                 src_lengths = None
@@ -291,6 +292,8 @@ class Trainer(object):
                 self.optim.step()  # update G
 
                 # 4. Compute loss for D in shards for memory efficiency.
+                tgt_lengths = torch.ones(tgt.size(1)).long() * tgt.size(0)
+                tgt_lengths = tgt_lengths.to(tgt.device)
                 enc_final, memory_bank = self.model.encoder(tgt, tgt_lengths)
                 self.model.zero_grad()
                 # batch_stats_D =
