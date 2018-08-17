@@ -37,7 +37,9 @@ class SiameseDiscriminator(nn.Module):
     def forward(self, dec_output, enc_output):
         dec = self.seq2vec(dec_output)
         enc = self.seq2vec(enc_output)
-        fc_input = self.bn2(torch.cat([enc, dec], dim=-1).squeeze(0))
+        fc_input = torch.cat([enc, dec], dim=-1).squeeze(0)
+        if fc_input.size(0) > 1:
+            fc_input = self.bn2(fc_input)
         out = self.fc(fc_input)
         return out
 
