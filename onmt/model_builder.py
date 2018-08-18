@@ -217,9 +217,10 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None):
 
     # Load the model states from checkpoint or initialize them.
     if checkpoint is not None:
-        model.load_state_dict(checkpoint['model'])
+        model.load_state_dict(checkpoint['model'], strict=False) # changed strict to False
         generator.load_state_dict(checkpoint['generator'])
-        discriminator.load_state_dict(checkpoint['discriminator'])
+        if 'discriminator' in checkpoint:  # when running inference, model has no discriminator
+            discriminator.load_state_dict(checkpoint['discriminator'])
 
     else:
         if model_opt.param_init != 0.0:
