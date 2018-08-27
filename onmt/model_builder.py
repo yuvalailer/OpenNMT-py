@@ -9,22 +9,19 @@ from torch.nn.init import xavier_uniform_
 
 import onmt.inputters as inputters
 import onmt.modules
-from onmt.encoders.rnn_encoder import RNNEncoder
-from onmt.encoders.transformer import TransformerEncoder
-from onmt.encoders.cnn_encoder import CNNEncoder
-from onmt.encoders.mean_encoder import MeanEncoder
-from onmt.encoders.audio_encoder import AudioEncoder
-from onmt.encoders.image_encoder import ImageEncoder
-
+from onmt.decoders.cnn_decoder import CNNDecoder
 from onmt.decoders.decoder import InputFeedRNNDecoder, StdRNNDecoder
 from onmt.decoders.transformer import TransformerDecoder
-from onmt.decoders.cnn_decoder import CNNDecoder
-
-from onmt.summarize.siamese import DummyDiscriminator, SiameseDiscriminator
-
+from onmt.encoders.audio_encoder import AudioEncoder
+from onmt.encoders.cnn_encoder import CNNEncoder
+from onmt.encoders.image_encoder import ImageEncoder
+from onmt.encoders.mean_encoder import MeanEncoder
+from onmt.encoders.rnn_encoder import RNNEncoder
+from onmt.encoders.transformer import TransformerEncoder
 from onmt.modules import Embeddings, CopyGenerator
-from onmt.utils.misc import use_gpu
+from onmt.summarize.siamese import DummyDiscriminator, SiameseDiscriminator
 from onmt.utils.logging import logger
+from onmt.utils.misc import use_gpu
 
 
 def build_embeddings(opt, word_dict, feature_dicts, for_encoder=True):
@@ -217,7 +214,15 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None):
 
     # Load the model states from checkpoint or initialize them.
     if checkpoint is not None:
-        model.load_state_dict(checkpoint['model'], strict=False) # changed strict to False
+        checkpoint['discriminator'] = {}
+        split = len('discriminator.')
+        for k, v in checkpoint['model'].items():
+            if 'discriminator' in k:
+                key = k[split:]
+                checkpoint['discriminator'][key] = v
+        for k in checkpoint['discriminator'].keys():
+            del checkpoint['model']['discriminator.' + k]
+        model.load_state_dict(checkpoint['model'])
         generator.load_state_dict(checkpoint['generator'])
         if 'discriminator' in checkpoint:  # when running inference, model has no discriminator
             discriminator.load_state_dict(checkpoint['discriminator'])
